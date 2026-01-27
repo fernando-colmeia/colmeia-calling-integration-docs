@@ -29,8 +29,6 @@ Todos os contratos, eventos, enums e schemas estão definidos exclusivamente no 
 
 → [`calling-integration-api-oas.yaml`](calling-integration-api-oas.yaml)
 
-O Swagger é a fonte de verdade.
-Este README não replica definições de payload ou regras de contrato.
 
 --------------------------------------------------
 
