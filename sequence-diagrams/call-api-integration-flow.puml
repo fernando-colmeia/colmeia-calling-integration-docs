@@ -1,0 +1,59 @@
+@startuml
+title Colmeia Calling API – Integration Flow (Public Contract)
+
+skinparam shadowing false
+skinparam sequenceArrowThickness 2
+skinparam sequenceParticipantBorderThickness 2
+skinparam sequenceBoxBackgroundColor #LightYellow
+
+participant "Colmeia Calling API" as SFU
+participant "Client (Integrator)" as Client
+
+== Incoming Call Notification ==
+
+SFU -> Client: POST /webhook\nContent-Type: application/json\n{\n"event":"bot_req_call",\n"idCall":"xyz",\n"idConversation":"xyz",\n"botSession":{...}}\n
+
+note over SFU, Client
+  Aguarda ação de agente humano
+  (tempo indeterminado)
+end note
+
+SFU -> Client: POST /webhook\nContent-Type: application/json\n{\n"event":"connect",\n"idCall":"xyz",\n"idConversation":"xyz",\n"rtcSession":{"type":"offer","sdp":"v=0..."}}\n
+
+note right of Client
+  Notificação de chamada recebida.
+  Nenhuma mídia flui até a aceitação.
+end note
+
+alt Client aceita a chamada
+    Client -> SFU: POST /v1/rest/calling/event\nContent-Type: application/json\n{\n"event":"accept",\n"idCall":"xyz",\n"idConversation":"xyz",\n"rtcSession":{"type":"answer","sdp":"v=0..."}}\n
+
+    note over Client, SFU #LightGreen
+      Chamada estabelecida.
+      Fluxo de mídia ativo.
+    end note
+
+else Client rejeita a chamada
+    Client -> SFU: POST /v1/rest/calling/event\nContent-Type: application/json\n{\n"event":"reject",\n"idCall":"xyz",\n"idConversation":"xyz"}\n
+
+    SFU -> Client: POST /webhook\nContent-Type: application/json\n{\n"event":"hangup",\n"idCall":"xyz",\n"idConversation":"xyz"}\n
+
+    note right of Client #LightCoral
+      Chamada rejeitada.
+    end note
+end
+
+opt Hangup iniciado pela Plataforma
+    SFU -> Client: POST /webhook\nContent-Type: application/json\n{\n"event":"hangup",\n"idCall":"xyz",\n"idConversation":"xyz"}\n
+
+    Client -> SFU: POST /v1/rest/calling/event\nContent-Type: application/json\n{\n"event":"hangup",\n"idCall":"xyz",\n"idConversation":"xyz",\n"botHalt":{"removeHalt":true}}\n
+end
+
+opt Hangup iniciado pelo Client
+    Client -> SFU: POST /v1/rest/calling/event\nContent-Type: application/json\n{\n"event":"hangup",\n"idCall":"xyz",\n"idConversation":"xyz",\n"botHalt":{"removeHalt":true}}\n
+
+    SFU -> Client: POST /webhook\nContent-Type: application/json\n{\n"event":"hangup",\n"idCall":"xyz",\n"idConversation":"xyz"}\n
+end
+
+footer Fluxo público de integração – Calling API Colmeia
+@enduml

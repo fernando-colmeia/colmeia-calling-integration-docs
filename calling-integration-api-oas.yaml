@@ -1,0 +1,257 @@
+  openapi: 3.1.0
+
+  info:
+    title: Calling Unified API
+    version: 1.0.0-alpha-oas3.1
+    description: |
+      Esta API foi projetada para o gerenciamento e controle de fluxos de comunicação.
+      Ela permite a interação entre o serviço de telefonia e as aplicações clientes,
+      centralizando o controle de chamadas e a recepção de eventos em um contrato
+      simplificado e escalável.
+
+      Observação de Implementação:
+      O sinal `connect` é utilizado para manter a simetria entre os comandos e eventos
+      da plataforma. No escopo atual, a funcionalidade de iniciar uma chamada através
+      do comando `connect` ainda não está implementada. Atualmente, este sinal é
+      disparado exclusivamente via Webhook pelo servidor para notificar chamadas
+      recebidas (Incoming Calls).
+
+  servers:
+    - url: https://dev-api.colmeia.cx/v1/rest
+
+  paths:
+    /calling/event:
+      post:
+        tags:
+          - Flow Control
+        summary: Envia um sinal de comando de chamada
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CallingRequest'
+              examples:
+                ACCEPT:
+                  summary: Aceitar chamada (SDP Answer)
+                  value:
+                    event: accept
+                    idCall: "xyz"
+                    idConversation: "xyz"
+                    rtcSession:
+                      type: answer
+                      sdp: "<<RFC 8866 SDP>>"
+
+                REJECT:
+                  summary: Rejeitar chamada recebida
+                  value:
+                    event: reject
+                    idCall: "xyz"
+                    idConversation: "xyz"
+
+                HANGUP:
+                  summary: Encerrar chamada ativa (remove o halt do bot por padrão)
+                  value:
+                    event: hangup
+                    idCall: "xyz"
+                    idConversation: "xyz"
+
+                HANGUP-KEEP-HALT:
+                  summary: Encerrar chamada ativa mantendo o halt do bot
+                  value:
+                    event: hangup
+                    idCall: "xyz"
+                    idConversation: "xyz"
+                    botHalt:
+                      removeHalt: false
+
+                HANGUP-REMOVE-HALT-WITH-PARAMS:
+                  summary: Encerrar chamada ativa removendo o halt do bot com parâmetros
+                  value:
+                    event: hangup
+                    idCall: "xyz"
+                    idConversation: "xyz"
+                    botHalt:
+                      removeHalt: true
+                      params: {}
+
+
+        responses:
+          '200':
+            description: Sinal processado com sucesso
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/ResponseBase'
+
+  # =========================
+  # WEBHOOKS (OpenAPI 3.1)
+  # =========================
+  webhooks:
+    onCallEvent:
+      post:
+        summary: Notificação de eventos de chamada
+        requestBody:
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookEvent'
+              examples:
+                BOT_REQ_CALL:
+                  summary: Bot requisitou uma chamada
+                  value:
+                    event: bot_req_call
+                    idCall: "xyz"
+                    idConversation: "xyz"
+                    idBot: "xyz"
+                    idHaltCallback: "xyz"
+                    from: "5511999999999"
+                    to: "5511888888888"
+                    botSession:
+                      rtf:
+                        channelType: "WhatsApp"
+                      conversation:
+                        - content: "Olá"
+
+                INCOMING_CALL:
+                  summary: Chamada recebida
+                  value:
+                    event: connect
+                    idCall: "xyz"
+                    idConversation: "xyz"
+                    from: "5511999999999"
+                    to: "5511888888888"
+                    rtcSession:
+                      type: offer
+                      sdp: "<<RFC 8866 SDP>>"
+        responses:
+          '200':
+            description: Evento recebido com sucesso
+
+  components:
+    schemas:
+      # =====================
+      # ENUMS
+      # =====================
+      ECallEvent:
+        type: string
+        enum:
+          - bot_req_call
+          - connect
+          - ringing
+          - accept
+          - reject
+          - hangup
+
+      # =====================
+      # SHARED
+      # =====================
+      SessionDescription:
+        type: object
+        required:
+          - type
+          - sdp
+        properties:
+          type:
+            type: string
+            enum: [offer, answer]
+          sdp:
+            type: string
+
+      ResponseBase:
+        type: object
+        properties:
+          type:
+            type: string
+            example: success
+          status:
+            type: integer
+            example: 200
+          idRequest:
+            type: string
+
+      # =====================
+      # REQUEST (Cliente → Plataforma)
+      # =====================
+      CallingRequest:
+        type: object
+        required:
+          - event
+          - idCall
+          - idConversation
+        properties:
+          event:
+            $ref: '#/components/schemas/ECallEvent'
+          idCall:
+            type: string
+          idConversation:
+            type: string
+          rtcSession:
+            $ref: '#/components/schemas/SessionDescription'
+          botHalt:
+            $ref: '#/components/schemas/CallingBotHaltCommand'
+
+      CallingBotHaltCommand:
+        type: object
+        required:
+          - removeHalt
+        properties:
+          removeHalt:
+            type: boolean
+            description: Indica se o halt do bot deve ser removido
+          params:
+            $ref: '#/components/schemas/CallbackResumeFlowParams'
+
+      CallbackResumeFlowParams:
+        type: object
+        description: Parâmetros para retomada do fluxo do bot (idCallback resolvido internamente)
+        additionalProperties: true
+
+      # =====================
+      # WEBHOOK (Plataforma → Cliente)
+      # =====================
+      CallingIntegrationBotSession:
+        type: object
+        required:
+          - conversation
+          - rtf
+        properties:
+          conversation:
+            type: array
+            items:
+              type: object
+              additionalProperties: true
+          rtf:
+            type: object
+            additionalProperties: true
+
+      WebhookEvent:
+        type: object
+        required:
+          - event
+          - idCall
+          - idConversation
+          - from
+          - to
+        properties:
+          event:
+            $ref: '#/components/schemas/ECallEvent'
+          idCall:
+            type: string
+          idConversation:
+            type: string
+          idBot:
+            type: string
+            description: Identificador do bot responsável pela chamada
+          idHaltCallback:
+            type: string
+            description: Identificador para remoção posterior do halt do bot
+          from:
+            type: string
+          to:
+            type: string
+          botSession:
+            $ref: '#/components/schemas/CallingIntegrationBotSession'
+          rtcSession:
+            $ref: '#/components/schemas/SessionDescription'
