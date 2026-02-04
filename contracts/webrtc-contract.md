@@ -20,27 +20,70 @@ A **Colmeia Calling API** utiliza WebRTC para encaminhamento de áudio em chamad
 - Outros codecs **não são aceitos**  
 - Garante interoperabilidade, baixa latência e compatibilidade com pipelines de voz/IA
 
-## 4. Sample Rate e Bitrate
+## 4. Características de Áudio (Sample Rate, Bitrate e Comportamento)
 
-- **Sample rate:** configurável na plataforma Colmeia  
+### Sample Rate
+
+- O **sample rate é configurável na plataforma Colmeia**, antes do início da chamada  
+- Valores suportados:
   - **8 kHz:** indicado para telefonia tradicional, VoIP básico e cenários de baixa largura de banda
   - **16 kHz:** indicado para pipelines de IA e processamento de voz em tempo real
-- **Imutável durante a chamada**; alterações exigem nova chamada  
-- **Bitrate:** negociado automaticamente via SDP  
-- Não exposto nem configurável pelo cliente
+  - **48 kHz:** indicado para pipelines de IA e cenários de maior fidelidade de áudio
+- O sample rate **é fixo durante a chamada**
+
+---
+
+### Bitrate
+
+- O bitrate de áudio é **ajustado automaticamente**
+- Não há valor fixo, mínimo ou máximo garantido
+- O cliente **não pode configurar ou forçar** o bitrate
+- O consumo de banda varia conforme:
+  - conteúdo de áudio
+  - perfil de frequência configurado
+  - condições de rede
+
+---
+
+### Packetization Time (ptime)
+
+- O áudio é transmitido em **quadros de duração fixa**, compatíveis com comunicações de voz em tempo quase real
+- A duração dos quadros é **aproximadamente 20 ms**
+- Esse comportamento:
+  - não é negociável
+  - não é configurável pelo cliente
+  - não pode ser alterado durante a chamada
+
+---
+
+### Transmissão em Silêncio (DTX)
+
+- A plataforma **não utiliza Discontinuous Transmission (DTX)**
+- O áudio é transmitido continuamente, inclusive durante períodos de silêncio
+- Não há supressão automática de envio de pacotes
+- Esse comportamento garante fluxo contínuo e previsível de mídia
+
+---
+
+### Recuperação de Perda de Pacotes (FEC)
+
+- A plataforma **não utiliza Forward Error Correction (FEC)**
+- Não há redundância de pacotes para recuperação de perdas
+- Em caso de perda de pacotes, aplicam-se apenas mecanismos padrão de ocultação de perdas
+
+---
+
+### Canais de Áudio (Mono)
+
+- O áudio é transmitido **exclusivamente em mono**
+- Áudio estéreo **não é suportado**
+- Esse comportamento é fixo e não configurável
 
 ## 5. Fluxo de Mídia
 
 - Áudio é encaminhado continuamente enquanto a chamada estiver ativa
-- Interrupção do fluxo de mídia **implica encerramento da chamada**
 
-## 6. Latência e Comportamento Near-Realtime
-
-- Sistema opera em **near-realtime**  
-- Latência fim-a-fim depende da plataforma de origem, Colmeia, cliente e rede  
-- **Sem garantia** de *hard real-time* ou latência máxima absoluta
-
-## 7. Responsabilidades
+## 6. Responsabilidades
 
 | Camada | Responsabilidade |
 |------|------------------|
@@ -48,6 +91,6 @@ A **Colmeia Calling API** utiliza WebRTC para encaminhamento de áudio em chamad
 | Colmeia | Estabelecer sessão WebRTC, encaminhar mídia e manter estabilidade durante a chamada |
 | Plataforma de comunicação | Originação e encerramento da chamada |
 
-## 8. Observações
+## 7. Observações
 
 - Alterações internas que não modifiquem o comportamento descrito **não exigem atualização** desta especificação  
