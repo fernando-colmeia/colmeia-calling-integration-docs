@@ -101,7 +101,6 @@ A Colmeia não origina chamadas e não mantém mídia ativa após o encerramento
   - caminho de mídia (proxy Colmeia ou direto, se configurado)
 
 - Não há garantia de latência máxima nem de jitter máximo.
-- A
 
 ## 8. Entrega de Eventos
 
