@@ -4,7 +4,7 @@
 
 Este documento define o contrato externo de integração da **Colmeia Calling API**, descrevendo o modelo de comunicação, a sequência lógica de eventos e as garantias operacionais observáveis por clientes integradores.
 
-O objetivo é estabelecer expectativas claras sobre comportamento, ordem de eventos, latência e responsabilidades em chamadas de voz *near-realtime*, sem expor detalhes de implementação interna.
+O objetivo é estabelecer expectativas claras sobre comportamento, ordem de eventos, latência e responsabilidades em chamadas de voz *near-realtime*.
 
 ## 2. Escopo
 
@@ -39,9 +39,13 @@ O objetivo é estabelecer expectativas claras sobre comportamento, ordem de even
 Para uma mesma chamada (`idCall`), os eventos seguem uma sequência lógica obrigatória.  
 Essa sequência define pré-condições contratuais para cada ação do cliente.
 
-### Sequência Invariável
+### Sequência Invariável (exemplo típico de chamada bem-sucedida)
 
-``` bot_req_call → connect → accept ```
+1. bot_req_call (emitido pela Colmeia → cliente)
+2. connect (emitido pela Colmeia → cliente)
+3. accept (enviado pelo cliente → Colmeia, com SDP answer)
+4. [mídia inicia]
+5. hangup (emitido por qualquer parte ou timeout)
 
 
 ### Definição dos Eventos
@@ -82,38 +86,40 @@ Essa sequência define pré-condições contratuais para cada ação do cliente.
 
 A Colmeia não origina chamadas e não mantém mídia ativa após o encerramento da chamada.
 
-## 7. Near-Realtime e Latência
+## 7. Realtime e Latência
 
-- Eventos e mídia são processados em *near-realtime*  
-- A latência observada depende de:
-  - condições de rede  
-  - carga da plataforma  
-  - comportamento do cliente  
+- **Eventos de sinalização** são processados em **near-realtime**  
+  (tipicamente centenas de milissegundos, com possível jitter e reentregas)
 
-- Eventos são tipicamente propagados em centenas de milissegundos  
-- Não há garantia de *hard real-time* nem de latência máxima  
+- **Fluxo de mídia (áudio)** opera em regime **soft-realtime**  
+  (quadros de 20 ms, baixa latência esperada, mas sem garantia de hard real-time)
+
+- A latência observada (end-to-end) depende de:
+  - condições de rede do cliente e da origem
+  - carga da plataforma Colmeia
+  - comportamento do cliente (ex: processamento local de áudio)
+  - caminho de mídia (proxy Colmeia ou direto, se configurado)
+
+- Não há garantia de latência máxima nem de jitter máximo.
+- A
 
 ## 8. Entrega de Eventos
 
-- Eventos são entregues de forma assíncrona  
-- Eventos podem:
-  - ser duplicados  
-  - sofrer tentativas de reentrega  
-
-**Obrigatório:**  
-Clientes devem tratar eventos de forma **idempotente**.
-
-A sequência lógica por chamada é preservada conforme definido neste contrato.
+- Entrega assíncrona via HTTP POST
+- Sem armazenamento persistente
+- `idCallEvent` único gerado antes do processamento interno do evento
+- Retry automático em erros transitórios (backoff exponencial, limite ~3–5 tentativas)
+- Sem garantia de entrega única → **obrigatório** idempotência + deduplicação pelo cliente
 
 ## 9. Eventos de Chamada
 
 Estados propagados pela API:
 
-- `bot_req_call`  
-- `connect`  
-- `accept`  
-- `reject`  
-- `hangup`  
+- `bot_req_call`
+- `connect`
+- `accept`
+- `reject`
+- `hangup`
 
 A disponibilidade e a transição entre estados seguem o comportamento da plataforma.
 
