@@ -1,4 +1,4 @@
-  openapi: 3.1.0
+openapi: 3.1.0
 
   info:
     title: Calling Unified API
@@ -78,11 +78,11 @@
 
         responses:
           '200':
-            description: Sinal processado com sucesso
+            description: Evento processado com sucesso
             content:
               application/json:
                 schema:
-                  $ref: '#/components/schemas/ResponseBase'
+                  $ref: '#/components/schemas/CallEventResponse'
 
   # =========================
   # WEBHOOKS (OpenAPI 3.1)
@@ -103,6 +103,7 @@
                   value:
                     event: bot_req_call
                     idCall: "xyz"
+                    idCallEvent: "xyz"
                     idConversation: "xyz"
                     idBot: "xyz"
                     idHaltCallback: "xyz"
@@ -119,6 +120,7 @@
                   value:
                     event: connect
                     idCall: "xyz"
+                    idCallEvent: "xyz"
                     idConversation: "xyz"
                     from: "5511999999999"
                     to: "5511888888888"
@@ -158,7 +160,6 @@
             enum: [offer, answer]
           sdp:
             type: string
-
       ResponseBase:
         type: object
         properties:
@@ -168,8 +169,18 @@
           status:
             type: integer
             example: 200
-          idRequest:
-            type: string
+          data: 
+            type: object
+      CallEventResponse:
+        allOf:
+          - $ref: '#/components/schemas/ResponseBase'
+          - type: object
+            properties:
+              data:
+                type: object
+                properties:
+                  idCallEvent:
+                    type: string
 
       # =====================
       # REQUEST (Cliente → Plataforma)
