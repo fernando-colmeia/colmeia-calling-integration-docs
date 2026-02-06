@@ -4,9 +4,7 @@ Todas as mudanças notáveis na Calling API serão documentadas neste arquivo.
 
 O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e este projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
-## [Unreleased]
-
-## [1.0.0] - 2026-02-06
+## [1.0.0-beta] - 2026-02-06
 
 ### Fixed
 - Rejeição de chamadas: evento agora é corretamente enviado ao provedor.
