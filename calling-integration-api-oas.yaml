@@ -1,268 +1,376 @@
 openapi: 3.1.0
 
-  info:
-    title: Calling Unified API
-    version: 1.0.0-alpha-oas3.1
-    description: |
-      Esta API foi projetada para o gerenciamento e controle de fluxos de comunicação.
-      Ela permite a interação entre o serviço de telefonia e as aplicações clientes,
-      centralizando o controle de chamadas e a recepção de eventos em um contrato
-      simplificado e escalável.
+info:
+  title: Calling Unified API
+  version: 1.0.0-alpha-oas3.1
+  description: |
+    Esta API foi projetada para o gerenciamento e controle de fluxos de comunicação.
+    Ela permite a interação entre o serviço de telefonia e as aplicações clientes,
+    centralizando o controle de chamadas e a recepção de eventos em um contrato
+    simplificado e escalável.
 
-      Observação de Implementação:
-      O sinal `connect` é utilizado para manter a simetria entre os comandos e eventos
-      da plataforma. No escopo atual, a funcionalidade de iniciar uma chamada através
-      do comando `connect` ainda não está implementada. Atualmente, este sinal é
-      disparado exclusivamente via Webhook pelo servidor para notificar chamadas
-      recebidas (Incoming Calls).
+    Observação de Implementação:
+    O sinal `connect` é utilizado para manter a simetria entre os comandos e eventos
+    da plataforma. No escopo atual, a funcionalidade de iniciar uma chamada através
+    do comando `connect` ainda não está implementada. Atualmente, este sinal é
+    disparado exclusivamente via Webhook pelo servidor para notificar chamadas
+    recebidas (Incoming Calls).
 
-  servers:
-    - url: https://dev-api.colmeia.cx/v1/rest
+servers:
+  - url: https://dev-api.colmeia.cx/v1/rest
 
-  paths:
-    /calling/event:
-      post:
-        tags:
-          - Flow Control
-        summary: Envia um sinal de comando de chamada
-        requestBody:
-          required: true
+paths:
+  /calling/event:
+    post:
+      tags:
+        - Flow Control
+      summary: Envia um sinal de comando de chamada
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CallingRequest'
+            examples:
+              ACCEPT:
+                summary: Aceitar chamada (SDP Answer)
+                value:
+                  event: accept
+                  idCall: "xyz"
+                  idConversation: "xyz"
+                  rtcSession:
+                    type: answer
+                    sdp: "<<RFC 8866 SDP>>"
+
+              REJECT:
+                summary: Rejeitar chamada recebida
+                value:
+                  event: reject
+                  idCall: "xyz"
+                  idConversation: "xyz"
+
+              HANGUP:
+                summary: Encerrar chamada ativa (remove o halt do bot por padrão)
+                value:
+                  event: hangup
+                  idCall: "xyz"
+                  idConversation: "xyz"
+
+              HANGUP-KEEP-HALT:
+                summary: Encerrar chamada ativa mantendo o halt do bot
+                value:
+                  event: hangup
+                  idCall: "xyz"
+                  idConversation: "xyz"
+                  botHalt:
+                    removeHalt: false
+
+              HANGUP-REMOVE-HALT-WITH-PARAMS:
+                summary: Encerrar chamada ativa removendo o halt do bot com parâmetros
+                value:
+                  event: hangup
+                  idCall: "xyz"
+                  idConversation: "xyz"
+                  botHalt:
+                    removeHalt: true
+                    params: {}
+
+
+      responses:
+        '200':
+          description: Evento processado com sucesso
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CallingRequest'
-              examples:
-                ACCEPT:
-                  summary: Aceitar chamada (SDP Answer)
-                  value:
-                    event: accept
-                    idCall: "xyz"
-                    idConversation: "xyz"
-                    rtcSession:
-                      type: answer
-                      sdp: "<<RFC 8866 SDP>>"
+                $ref: '#/components/schemas/CallEventResponse'
+        '204':
+          description: Evento duplicado
+        '404':
+          $ref: "#/components/responses/ResourceNotFound"
+        '429':
+          $ref: "#/components/responses/CallTooBusy"
+        '500':
+          $ref: "#/components/responses/InternalError"
+# =========================
+# WEBHOOKS (OpenAPI 3.1)
+# =========================
+webhooks:
+  onCallEvent:
+    post:
+      summary: Notificação de eventos de chamada
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookEvent'
+            examples:
+              BOT_REQ_CALL:
+                summary: Bot requisitou uma chamada
+                value:
+                  event: bot_req_call
+                  idCall: "xyz"
+                  idCallEvent: "xyz"
+                  idConversation: "xyz"
+                  idBot: "xyz"
+                  idHaltCallback: "xyz"
+                  from: "5511999999999"
+                  to: "5511888888888"
+                  botSession:
+                    rtf:
+                      channelType: "WhatsApp"
+                    conversation:
+                      - content: "Olá"
 
-                REJECT:
-                  summary: Rejeitar chamada recebida
-                  value:
-                    event: reject
-                    idCall: "xyz"
-                    idConversation: "xyz"
+              INCOMING_CALL:
+                summary: Chamada recebida
+                value:
+                  event: connect
+                  idCall: "xyz"
+                  idCallEvent: "xyz"
+                  idConversation: "xyz"
+                  from: "5511999999999"
+                  to: "5511888888888"
+                  rtcSession:
+                    type: offer
+                    sdp: "<<RFC 8866 SDP>>"
+      responses:
+        '200':
+          description: Evento recebido com sucesso
 
-                HANGUP:
-                  summary: Encerrar chamada ativa (remove o halt do bot por padrão)
-                  value:
-                    event: hangup
-                    idCall: "xyz"
-                    idConversation: "xyz"
-
-                HANGUP-KEEP-HALT:
-                  summary: Encerrar chamada ativa mantendo o halt do bot
-                  value:
-                    event: hangup
-                    idCall: "xyz"
-                    idConversation: "xyz"
-                    botHalt:
-                      removeHalt: false
-
-                HANGUP-REMOVE-HALT-WITH-PARAMS:
-                  summary: Encerrar chamada ativa removendo o halt do bot com parâmetros
-                  value:
-                    event: hangup
-                    idCall: "xyz"
-                    idConversation: "xyz"
-                    botHalt:
-                      removeHalt: true
-                      params: {}
-
-
-        responses:
-          '200':
-            description: Evento processado com sucesso
-            content:
-              application/json:
-                schema:
-                  $ref: '#/components/schemas/CallEventResponse'
-
-  # =========================
-  # WEBHOOKS (OpenAPI 3.1)
-  # =========================
-  webhooks:
-    onCallEvent:
-      post:
-        summary: Notificação de eventos de chamada
-        requestBody:
-          required: true
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WebhookEvent'
-              examples:
-                BOT_REQ_CALL:
-                  summary: Bot requisitou uma chamada
-                  value:
-                    event: bot_req_call
-                    idCall: "xyz"
-                    idCallEvent: "xyz"
-                    idConversation: "xyz"
-                    idBot: "xyz"
-                    idHaltCallback: "xyz"
-                    from: "5511999999999"
-                    to: "5511888888888"
-                    botSession:
-                      rtf:
-                        channelType: "WhatsApp"
-                      conversation:
-                        - content: "Olá"
-
-                INCOMING_CALL:
-                  summary: Chamada recebida
-                  value:
-                    event: connect
-                    idCall: "xyz"
-                    idCallEvent: "xyz"
-                    idConversation: "xyz"
-                    from: "5511999999999"
-                    to: "5511888888888"
-                    rtcSession:
-                      type: offer
-                      sdp: "<<RFC 8866 SDP>>"
-        responses:
-          '200':
-            description: Evento recebido com sucesso
-
-  components:
-    schemas:
-      # =====================
-      # ENUMS
-      # =====================
-      ECallEvent:
-        type: string
-        enum:
-          - bot_req_call
-          - connect
-          - ringing
-          - accept
-          - reject
-          - hangup
-
-      # =====================
-      # SHARED
-      # =====================
-      SessionDescription:
-        type: object
-        required:
-          - type
-          - sdp
-        properties:
-          type:
-            type: string
-            enum: [offer, answer]
-          sdp:
-            type: string
-      ResponseBase:
-        type: object
-        properties:
-          type:
-            type: string
-            example: success
-          status:
-            type: integer
-            example: 200
-          data: 
-            type: object
-      CallEventResponse:
-        allOf:
-          - $ref: '#/components/schemas/ResponseBase'
-          - type: object
-            properties:
-              data:
-                type: object
-                properties:
-                  idCallEvent:
-                    type: string
-
-      # =====================
-      # REQUEST (Cliente → Plataforma)
-      # =====================
-      CallingRequest:
-        type: object
-        required:
-          - event
-          - idCall
-          - idConversation
-        properties:
-          event:
-            $ref: '#/components/schemas/ECallEvent'
-          idCall:
-            type: string
-          idConversation:
-            type: string
-          rtcSession:
-            $ref: '#/components/schemas/SessionDescription'
-          botHalt:
-            $ref: '#/components/schemas/CallingBotHaltCommand'
-
-      CallingBotHaltCommand:
-        type: object
-        required:
-          - removeHalt
-        properties:
-          removeHalt:
-            type: boolean
-            description: Indica se o halt do bot deve ser removido
-          params:
-            $ref: '#/components/schemas/CallbackResumeFlowParams'
-
-      CallbackResumeFlowParams:
-        type: object
-        description: Parâmetros para retomada do fluxo do bot (idCallback resolvido internamente)
-        additionalProperties: true
-
-      # =====================
-      # WEBHOOK (Plataforma → Cliente)
-      # =====================
-      CallingIntegrationBotSession:
-        type: object
-        required:
-          - conversation
-          - rtf
-        properties:
-          conversation:
-            type: array
-            items:
+components:
+  examples:
+    CallNotFound:
+      summary: Chamada não encontrada
+      value:
+        type: "error"
+        status: 404
+        error:
+          id: "call-not-found"
+          description:
+            - message: "Chamada não encontrada"
+    ConversationNotFound:
+      summary: Conversa não encontrada
+      value:
+        type: "error"
+        status: 404
+        error:
+          id: "conversation-not-found"
+          description:
+            - message: "Conversa não encontrada"
+    InternalError:
+      summary: Erro interno ao processar evento
+      value:
+        type: "error"
+        status: 429
+        error:
+          id: "event-process-error"
+          description:
+            - idCallEvent: 'xyz'
+              message: "Erro interno ao processar evento"
+    CallTooBusy:
+      summary: Chamada sobre instensa atividade
+      value:
+        type: "error"
+        status: 429
+        error:
+          id: "call-too-busy"
+          description:
+            - idCallEvent: 'xyz'
+              message: "Recurso ocupado no momento"
+  responses:
+    ResourceNotFound:
+      description: Recurso não encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ColmeiaDownstreamErrorResponse'
+          examples:
+            CallNotFound:
+              $ref: "#/components/examples/CallNotFound"
+            ConversationNotFound:
+              $ref: "#/components/examples/ConversationNotFound"
+    InternalError:
+      description: Erro interno ao processar evento
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ColmeiaDownstreamErrorResponse'
+          examples:
+            InternalError:
+              $ref: "#/components/examples/InternalError"
+    CallTooBusy:
+      description: Chamada sobre instensa atividade
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ColmeiaDownstreamErrorResponse'
+          examples:
+            CallTooBusy:
+              $ref: "#/components/examples/CallTooBusy"
+  schemas:
+    # =====================
+    # ENUMS
+    # =====================
+    ECallEvent:
+      type: string
+      enum:
+        - bot_req_call
+        - connect
+        - ringing
+        - accept
+        - reject
+        - hangup
+    ErrorsCode:
+      type: string
+      enum:
+        - 'event-process-error'
+        - 'call-too-busy'
+        - 'call-not-found'
+        - 'conversation-not-found'
+    # =====================
+    # SHARED
+    # =====================
+    SessionDescription:
+      type: object
+      required:
+        - type
+        - sdp
+      properties:
+        type:
+          type: string
+          enum: [offer, answer]
+        sdp:
+          type: string
+    ResponseType:
+      type: string
+      enum:
+        - success
+        - error
+    ErrorDescriptionObject:
+      type: object
+      properties:
+        message:
+          type: string
+    ErrorDescriptionArray:
+      type: array
+      items:
+        $ref: '#/components/schemas/ErrorDescriptionObject'
+    ColmeiaDownstreamResponseBase:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/ResponseType'
+        status:
+          type: integer
+          description: HTTP Status Code
+        idRequest:
+          type: string
+          description: 'Identificador da requisição'
+    ColmeiaDownstreamSuccessResponse:
+      type: object
+    ColmeiaDownstreamErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/ColmeiaDownstreamResponseBase'
+        - type: object
+          properties:
+            error:
               type: object
-              additionalProperties: true
-          rtf:
+              properties:
+                id:
+                  $ref: '#/components/schemas/ErrorsCode'
+                descriptions:
+                  $ref: '#/components/schemas/ErrorDescriptionArray'
+    CallEventResponse:
+      type: object
+      properties:
+        idCallEvent:
+          type: string
+
+    # =====================
+    # REQUEST (Cliente → Plataforma)
+    # =====================
+    CallingRequest:
+      type: object
+      required:
+        - event
+        - idCall
+        - idConversation
+      properties:
+        event:
+          $ref: '#/components/schemas/ECallEvent'
+        idCall:
+          type: string
+        idConversation:
+          type: string
+        rtcSession:
+          $ref: '#/components/schemas/SessionDescription'
+        botHalt:
+          $ref: '#/components/schemas/CallingBotHaltCommand'
+
+    CallingBotHaltCommand:
+      type: object
+      required:
+        - removeHalt
+      properties:
+        removeHalt:
+          type: boolean
+          description: Indica se o halt do bot deve ser removido
+        params:
+          $ref: '#/components/schemas/CallbackResumeFlowParams'
+
+    CallbackResumeFlowParams:
+      type: object
+      description: Parâmetros para retomada do fluxo do bot (idCallback resolvido internamente)
+      additionalProperties: true
+
+    # =====================
+    # WEBHOOK (Plataforma → Cliente)
+    # =====================
+    CallingIntegrationBotSession:
+      type: object
+      required:
+        - conversation
+        - rtf
+      properties:
+        conversation:
+          type: array
+          items:
             type: object
             additionalProperties: true
+        rtf:
+          type: object
+          additionalProperties: true
 
-      WebhookEvent:
-        type: object
-        required:
-          - event
-          - idCall
-          - idConversation
-          - from
-          - to
-        properties:
-          event:
-            $ref: '#/components/schemas/ECallEvent'
-          idCall:
-            type: string
-          idConversation:
-            type: string
-          idBot:
-            type: string
-            description: Identificador do bot responsável pela chamada
-          idHaltCallback:
-            type: string
-            description: Identificador para remoção posterior do halt do bot
-          from:
-            type: string
-          to:
-            type: string
-          botSession:
-            $ref: '#/components/schemas/CallingIntegrationBotSession'
-          rtcSession:
-            $ref: '#/components/schemas/SessionDescription'
+    WebhookEvent:
+      type: object
+      required:
+        - event
+        - idCall
+        - idCallEvent
+        - idConversation
+        - from
+        - to
+      properties:
+        event:
+          $ref: '#/components/schemas/ECallEvent'
+        idCall:
+          type: string
+        idCallEvent:
+          type: string
+        idConversation:
+          type: string
+        idBot:
+          type: string
+          description: Identificador do bot responsável pela chamada
+        idHaltCallback:
+          type: string
+          description: Identificador para remoção posterior do halt do bot
+        from:
+          type: string
+        to:
+          type: string
+        botSession:
+          $ref: '#/components/schemas/CallingIntegrationBotSession'
+        rtcSession:
+          $ref: '#/components/schemas/SessionDescription'
