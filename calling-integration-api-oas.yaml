@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Calling Unified API
-  version: 1.0.0-alpha-oas3.1
+  version: 1.1.0-beta-oas3.1
   description: |
     Esta API foi projetada para o gerenciamento e controle de fluxos de comunicação.
     Ela permite a interação entre o serviço de telefonia e as aplicações clientes,
@@ -85,6 +85,8 @@ paths:
                 $ref: '#/components/schemas/CallEventResponse'
         '204':
           description: Evento duplicado
+        '400':
+          $ref: "#/components/responses/BadRequest"
         '404':
           $ref: "#/components/responses/ResourceNotFound"
         '429':
@@ -114,6 +116,7 @@ webhooks:
                   idConversation: "xyz"
                   idBot: "xyz"
                   idHaltCallback: "xyz"
+                  callingTag: "xyz"
                   from: "5511999999999"
                   to: "5511888888888"
                   botSession:
@@ -147,7 +150,7 @@ components:
         status: 404
         error:
           id: "call-not-found"
-          description:
+          descriptions:
             - message: "Chamada não encontrada"
     ConversationNotFound:
       summary: Conversa não encontrada
@@ -156,7 +159,7 @@ components:
         status: 404
         error:
           id: "conversation-not-found"
-          description:
+          descriptions:
             - message: "Conversa não encontrada"
     InternalError:
       summary: Erro interno ao processar evento
@@ -165,7 +168,7 @@ components:
         status: 429
         error:
           id: "event-process-error"
-          description:
+          descriptions:
             - idCallEvent: 'xyz'
               message: "Erro interno ao processar evento"
     CallTooBusy:
@@ -175,10 +178,55 @@ components:
         status: 429
         error:
           id: "call-too-busy"
-          description:
+          descriptions:
             - idCallEvent: 'xyz'
               message: "Recurso ocupado no momento"
+    MandatoryCommonFields:
+      summary: Campos base obrigatórios
+      value:
+        type: "error"
+        status: 400
+        error:
+          id: "invalidRequest"
+          descriptions:
+            - field: 'idCall'
+              message: "idCall é um campo obrigatório"
+            - field: 'idConversation'
+              message: "idConversation é um campo obrigatório"
+            - field: 'event'
+              message: "Evento {event} inválido."
+        
+    InvalidRTCObject:
+      summary: Valdiação objeto RTC
+      value:
+        type: "error"
+        status: 400
+        error:
+          id: "invalidRequest"
+          descriptions:
+          - field: 'rtcSession'
+            message: "Campo rtcSession é obrigatório"
+          - field: 'rtcSession.type'
+            message: 'Tipo "{sdpType}" sdp não suportado.'
+          - field: 'rtcSession.sdp'
+            message: 'Valor sdp inválido, deve ser uma string válida.'
+          - field: 'rtcSession.type'
+            message: 'Tipo "{sdpType}" sdp inválido, para connect é esperado um: offer'
+          - field: 'rtcSession.type'
+            message: 'Tipo "{sdpType}" sdp inválido, para accept é esperado um: answer'
   responses:
+    BadRequest:
+      description: Erro de validação
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ColmeiaDownstreamErrorResponse'
+          examples:
+            MandatoryFields:
+              $ref: "#/components/examples/MandatoryCommonFields"
+            InvalidRTCObject:
+              $ref: "#/components/examples/InvalidRTCObject"
+            
     ResourceNotFound:
       description: Recurso não encontrado
       content:
@@ -366,6 +414,9 @@ components:
         idHaltCallback:
           type: string
           description: Identificador para remoção posterior do halt do bot
+        callingTag:
+          type: string
+          description: Identificador opcional definido na configuração da ação do bot e propagado neste evento.
         from:
           type: string
         to:
