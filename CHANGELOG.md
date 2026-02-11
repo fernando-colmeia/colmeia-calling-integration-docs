@@ -4,6 +4,13 @@ Todas as mudanças notáveis na Calling API serão documentadas neste arquivo.
 
 O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e este projeto adota [Versionamento Semântico](https://semver.org/lang/pt-BR/).
 
+## [1.1.0-beta] - 2026-02-11
+
+### Added
+- Campo opcional `callingTag` incluído nos eventos de webhook, definido na configuração da ação do bot e propagado no payload.
+<br><br>
+---
+
 ## [1.0.0-beta] - 2026-02-06
 
 ### Fixed
